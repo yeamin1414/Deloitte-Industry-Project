@@ -1,5 +1,5 @@
 # Deloitte-Industry-Project
-# KapConnect: A Real Time Diagnostic Integration Platform
+# KapConnect: A Real-Time Diagnostic Integration Platform
 
 KapConnect is a modular, cloud hybrid healthcare integration platform designed to connect diagnostic devices, laboratory information systems, and hospital systems into one trusted real time data ecosystem.
 
