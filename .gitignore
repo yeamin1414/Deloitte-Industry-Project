@@ -1,0 +1,29 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+data/
+.pytest_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+*.db
+*.db-wal
+*.db-shm
+.DS_Store
+.idea/
+.vscode/
+# Terraform
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+.terraform.lock.hcl
+crash.log
+# Emulators
+__azurite_db*
+__blobstorage__/
+__queuestorage__/

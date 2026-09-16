@@ -1,0 +1,502 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>KapConnect operations console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --paper: #E9EEF0;
+  --surface: #FFFFFF;
+  --ink: #102A43;
+  --muted: #52606D;
+  --line: #CBD5DC;
+  --route: #0F7B6C;
+  --route-soft: #D5EEEA;
+  --warn: #9A6412;
+  --warn-soft: #FBEFD9;
+  --crit: #B42318;
+  --crit-soft: #FBE4E1;
+  --idle: #9AA5B1;
+  --focus: #1D4ED8;
+  --radius-panel: 10px;
+  --radius-control: 6px;
+  font-size: 16px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #0E1A24; --surface: #15232F; --ink: #E6EDF2; --muted: #9FB0BF; --line: #2A3B4A;
+    --route: #3CC4AE; --route-soft: #123A36; --warn: #E0A84A; --warn-soft: #3A2C12;
+    --crit: #F07167; --crit-soft: #3D1A18; --idle: #5C6B78; --focus: #7AA2FF;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--paper); color: var(--ink);
+  font-family: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  line-height: 1.45; font-variant-numeric: tabular-nums;
+}
+button, select, input { font: inherit; color: inherit; }
+.sr { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+.wrap { max-width: 1320px; margin: 0 auto; padding: 20px 24px 48px; }
+
+header.top { display: flex; flex-wrap: wrap; align-items: center; gap: 16px 24px; margin-bottom: 18px; }
+.brand { display: flex; align-items: baseline; gap: 12px; margin-right: auto; }
+.brand h1 { margin: 0; font-size: 1.75rem; letter-spacing: -0.01em; }
+.brand p { margin: 0; color: var(--muted); }
+.controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+select, input[type=text] {
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-control);
+  padding: 8px 10px; min-height: 40px;
+}
+.btn {
+  border: 1px solid var(--ink); background: var(--ink); color: var(--paper);
+  border-radius: var(--radius-control); padding: 8px 14px; min-height: 40px; cursor: pointer; font-weight: 700;
+}
+.btn.quiet { background: transparent; color: var(--ink); border-color: var(--line); font-weight: 400; }
+.btn.danger { background: transparent; color: var(--crit); border-color: var(--crit); }
+.btn.small { min-height: 32px; padding: 4px 10px; font-size: 0.875rem; }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* Route map: the signature element */
+.route {
+  background: var(--surface); border-radius: var(--radius-panel); border: 1px solid var(--line);
+  padding: 18px 20px 14px; margin-bottom: 18px;
+}
+.route-head { display: flex; flex-wrap: wrap; gap: 8px 20px; align-items: baseline; margin-bottom: 6px; }
+.route-head h2 { margin: 0; font-size: 1.25rem; }
+.route-head .status { color: var(--muted); }
+.route-head .status strong { color: var(--ink); }
+.route svg { width: 100%; height: auto; display: block; }
+.route svg text { font-family: inherit; fill: var(--ink); }
+.lane-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; margin-top: 4px; }
+.flow { stroke-dasharray: 6 10; animation: flow 1.2s linear infinite; }
+@keyframes flow { to { stroke-dashoffset: -32; } }
+@media (prefers-reduced-motion: reduce) { .flow { animation: none; } }
+
+.figures {
+  display: flex; flex-wrap: wrap; gap: 6px 28px; margin: 0 0 18px; padding: 0 4px;
+}
+.figures div { display: flex; align-items: baseline; gap: 8px; }
+.figures b { font-size: 1.5rem; }
+.figures span { color: var(--muted); }
+
+.grid { display: grid; gap: 18px; grid-template-columns: repeat(12, 1fr); }
+.panel {
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-panel);
+  padding: 16px 18px; min-width: 0;
+}
+.panel h2 { margin: 0 0 4px; font-size: 1.125rem; }
+.panel .lede { margin: 0 0 12px; color: var(--muted); font-size: 0.9375rem; max-width: 70ch; }
+.span-8 { grid-column: span 8; } .span-4 { grid-column: span 4; }
+.span-6 { grid-column: span 6; } .span-12 { grid-column: span 12; }
+@media (max-width: 1000px) { .span-8, .span-4, .span-6 { grid-column: span 12; } }
+@media (max-width: 600px) { .wrap { padding: 14px 12px 32px; } .brand { flex-direction: column; gap: 0; } }
+
+.scroll { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 0.9375rem; }
+th { text-align: left; font-weight: 700; color: var(--muted); padding: 6px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+td { padding: 7px 8px; border-bottom: 1px solid var(--line); }
+td.num, td .tag { white-space: nowrap; }
+tr:last-child td { border-bottom: 0; }
+td.num { text-align: right; }
+
+.tag { display: inline-block; padding: 1px 8px; border-radius: 4px; font-size: 0.8125rem; font-weight: 700; }
+.tag.ok { background: var(--route-soft); color: var(--route); }
+.tag.warn { background: var(--warn-soft); color: var(--warn); }
+.tag.crit { background: var(--crit-soft); color: var(--crit); }
+.tag.idle { background: transparent; color: var(--muted); border: 1px solid var(--line); }
+
+.alert { border-left: 4px solid var(--crit); padding: 8px 10px; margin-bottom: 10px; background: var(--crit-soft); border-radius: 0 6px 6px 0; }
+.alert.escalated { border-left-color: var(--warn); background: var(--warn-soft); }
+.alert p { margin: 0 0 6px; }
+.alert small { color: var(--muted); }
+.empty { color: var(--muted); padding: 8px 0; }
+.locked { color: var(--muted); border: 1px dashed var(--line); border-radius: 6px; padding: 12px; }
+
+.devices { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; }
+.device { border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; }
+.device b { display: block; }
+.device small { color: var(--muted); }
+
+.rows { list-style: none; margin: 0; padding: 0; }
+.rows li { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; border-bottom: 1px solid var(--line); }
+.rows li:last-child { border-bottom: 0; }
+.rows li span:last-child { text-align: right; }
+.inline { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 10px 0; }
+.result-box { background: var(--paper); border-radius: 6px; padding: 10px 12px; margin-top: 10px; font-size: 0.9375rem; }
+.bar { height: 8px; background: var(--paper); border-radius: 4px; overflow: hidden; margin: 6px 0 2px; }
+.bar i { display: block; height: 100%; background: var(--route); }
+
+#toast {
+  position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); max-width: 90vw;
+  background: var(--ink); color: var(--paper); padding: 10px 16px; border-radius: 8px;
+  opacity: 0; pointer-events: none; transition: opacity .2s;
+}
+#toast.show { opacity: 1; }
+footer { margin-top: 24px; color: var(--muted); font-size: 0.875rem; }
+footer a { color: inherit; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <h1>KapConnect</h1>
+      <p>NSW pathology network, live operations</p>
+    </div>
+    <div class="controls">
+      <label for="who" class="sr">Signed in as</label>
+      <select id="who" aria-label="Signed in as">
+        <option value="tech.lee">Sam Lee, lab technician</option>
+        <option value="dr.jones">Dr Anna Jones, clinician</option>
+        <option value="admin.patel">Priya Patel, hospital administrator</option>
+        <option value="ops.nguyen" selected>Minh Nguyen, IT operations</option>
+      </select>
+      <button class="btn" id="traffic">Send 25 device results</button>
+    </div>
+  </header>
+
+  <section class="route" aria-labelledby="route-title">
+    <div class="route-head">
+      <h2 id="route-title">Where results are flowing</h2>
+      <span class="status" id="route-status">Connecting</span>
+    </div>
+    <svg id="map" viewBox="0 0 1200 250" role="img" aria-label="Data route from devices through the hospital edge node to AWS and Azure"></svg>
+    <div class="lane-actions" id="lane-actions"></div>
+  </section>
+
+  <div class="figures" id="figures" aria-live="polite"></div>
+
+  <div class="grid">
+    <section class="panel span-8">
+      <h2>Latest results</h2>
+      <p class="lede">Every result is screened for sample quality, signed into the provenance ledger and routed to a cloud before it reaches clinicians.</p>
+      <div class="scroll"><table>
+        <thead><tr><th>Patient</th><th>Test</th><th class="num">Value</th><th>Sample check</th><th>Status</th><th>Routed via</th></tr></thead>
+        <tbody id="results"><tr><td colspan="6" class="empty">No results yet. Send device results to start the flow.</td></tr></tbody>
+      </table></div>
+    </section>
+
+    <section class="panel span-4">
+      <h2>Critical values</h2>
+      <p class="lede">Unacknowledged alerts escalate to the on call clinician after 15 minutes.</p>
+      <div id="alerts"><p class="empty">No open critical values.</p></div>
+    </section>
+
+    <section class="panel span-12">
+      <h2>Analysers</h2>
+      <p class="lede">Status comes from each analyser's last message and its share of flagged samples.</p>
+      <div class="devices" id="devices"><p class="empty">Analysers appear once they send results.</p></div>
+    </section>
+
+    <section class="panel span-4">
+      <h2>Result provenance</h2>
+      <p class="lede">The ledger is hash chained and copied to locked storage in both clouds.</p>
+      <div class="inline">
+        <button class="btn quiet small" id="verify">Check the chain</button>
+        <button class="btn danger small" id="tamper" data-perm="ledger:operate">Simulate an edited result</button>
+        <button class="btn quiet small" id="repair" data-perm="ledger:operate" disabled>Restore from cloud copy</button>
+      </div>
+      <div id="ledger-out" class="result-box">Check the chain to see its current state.</div>
+      <h2 style="margin-top:18px">Reagent recall</h2>
+      <div class="inline">
+        <input type="text" id="batch" value="LOT-S24A117" aria-label="Reagent batch">
+        <button class="btn small" id="recall" data-perm="recall:run">Find affected patients</button>
+      </div>
+      <div id="recall-out"></div>
+    </section>
+
+    <section class="panel span-4">
+      <h2>Cloud cost</h2>
+      <p class="lede">Every cloud call is metered by provider, operation and hospital.</p>
+      <div id="costs"></div>
+      <div class="inline">
+        <label for="strategy">Route messages by</label>
+        <select id="strategy" data-perm="cloud:operate">
+          <option value="priority">Provider priority</option>
+          <option value="cost">Lowest cost</option>
+        </select>
+      </div>
+    </section>
+
+    <section class="panel span-4">
+      <h2>Compliance posture</h2>
+      <p class="lede">Runtime checks mapped to the Privacy Act and ISO 27001 controls.</p>
+      <div id="compliance"></div>
+    </section>
+
+    <section class="panel span-6">
+      <h2>Patient match reviews</h2>
+      <p class="lede">Likely duplicate records wait here. Nothing is linked without an administrator.</p>
+      <div id="reviews"></div>
+    </section>
+
+    <section class="panel span-6">
+      <h2>Message recovery drills</h2>
+      <p class="lede">Send a malformed event to watch retries end in the dead letter queue, then replay anything held at the hospital edge.</p>
+      <div class="inline">
+        <button class="btn quiet small" id="poison" data-perm="cloud:operate">Send a malformed event</button>
+        <button class="btn quiet small" id="drain" data-perm="cloud:operate">Replay held messages</button>
+      </div>
+      <div id="dlq"></div>
+    </section>
+  </div>
+
+  <footer>
+    Demo data is synthetic. <a href="/docs">API reference</a> and <a href="/metrics">Prometheus metrics</a> are served by this instance.
+  </footer>
+</div>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script>
+const state = { token: null, me: null, seqToRepair: null };
+const $ = (id) => document.getElementById(id);
+const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+const can = (perm) => !!state.me && state.me.permissions.includes(perm);
+const LABELS = { ok: "Passed", haemolysed: "Haemolysed", clotted: "Clotted", insufficient_volume: "Low volume", wrong_tube: "Wrong tube", not_screened: "Not screened" };
+const CLOUD = { aws: "AWS Sydney", azure: "Azure Australia East", local: "Hospital node", edge_buffer: "Hospital edge buffer" };
+
+function toast(msg) {
+  const t = $("toast"); t.textContent = msg; t.classList.add("show");
+  clearTimeout(toast.timer); toast.timer = setTimeout(() => t.classList.remove("show"), 3200);
+}
+
+async function api(path, opts = {}) {
+  const res = await fetch(path, { ...opts, headers: { "Authorization": `Bearer ${state.token}`, "Content-Type": "application/json", ...(opts.headers || {}) } });
+  if (!res.ok) {
+    let detail = res.statusText;
+    try { const b = await res.json(); detail = typeof b.detail === "string" ? b.detail : JSON.stringify(b.detail); } catch (_) {}
+    throw new Error(detail);
+  }
+  return res.json();
+}
+
+async function signIn(username) {
+  const body = new URLSearchParams({ username, password: "kapconnect" });
+  const res = await fetch("/api/v1/auth/token", { method: "POST", body });
+  const token = (await res.json()).access_token;
+  const me = await fetch("/api/v1/auth/me", { headers: { "Authorization": `Bearer ${token}` } }).then((r) => r.json());
+  state.token = token; state.me = me;  // swap together so polling never mixes roles
+  document.querySelectorAll("[data-perm]").forEach((el) => {
+    el.disabled = !can(el.dataset.perm);
+    el.title = el.disabled ? "Your role cannot do this. Switch to a role that can." : "";
+  });
+  $("repair").disabled = !can("ledger:operate") || !state.seqToRepair;
+  refreshAll();
+}
+
+/* Route map */
+function drawMap(cloud) {
+  const byName = Object.fromEntries(cloud.providers.map((p) => [p.name, p]));
+  const lanes = cloud.providers.slice(0, 2);
+  const active = cloud.active_route;
+  const y = [70, 180];
+  let svg = "";
+  const node = (x, cy, w, title, sub, tone) => `
+    <rect x="${x}" y="${cy - 30}" width="${w}" height="60" rx="8" fill="var(--surface)" stroke="var(--${tone})" stroke-width="2"/>
+    <text x="${x + 14}" y="${cy - 4}" font-size="17" font-weight="700">${esc(title)}</text>
+    <text x="${x + 14}" y="${cy + 17}" font-size="14" style="fill:var(--muted)">${esc(sub)}</text>`;
+  const path = (x1, y1, x2, y2, tone, live, dashed) =>
+    `<path d="M${x1} ${y1} C ${(x1 + x2) / 2} ${y1}, ${(x1 + x2) / 2} ${y2}, ${x2} ${y2}" fill="none"
+      stroke="var(--${tone})" stroke-width="${live ? 5 : 2}" ${dashed ? 'stroke-dasharray="4 6"' : ""} class="${live ? "flow" : ""}"/>`;
+
+  const edgeTone = cloud.edge_buffer_depth > 0 ? "warn" : "line";
+  svg += path(190, 125, 330, 125, "route", true, false);
+  lanes.forEach((p, i) => {
+    const down = p.state === "open";
+    const live = p.name === active;
+    const tone = down ? "crit" : live ? "route" : "idle";
+    svg += path(560, 125, 690, y[i], tone, live, down);
+    svg += path(950, y[i], 1010, 125, live ? "route" : "idle", live, false);
+    const latency = p.simulated ? "" : `, ${p.last_latency_ms ?? 0} ms`;
+    const sub = down ? (p.outage_drill ? "Offline for drill" : "Unreachable") : live ? `Carrying traffic${latency}` : "Standby, copying ledger";
+    svg += node(690, y[i], 260, CLOUD[p.kind] || p.name, sub, down ? "crit" : live ? "route" : "line");
+  });
+  svg += node(20, 125, 170, "Analysers", "HL7 v2 over TLS", "line");
+  svg += node(330, 125, 230, "Hospital edge node",
+    cloud.edge_buffer_depth ? `${cloud.edge_buffer_depth} held until a cloud returns` : "Nothing held", edgeTone);
+  svg += node(1010, 125, 170, "Clinicians", "Portal and EMR", "line");
+  $("map").innerHTML = svg;
+
+  const routeText = active === "edge_buffer"
+    ? `<strong>Both clouds are offline.</strong> Results are held at the hospital and will replay automatically.`
+    : `<strong>${esc(CLOUD[byName[active]?.kind] || active)}</strong> is carrying traffic. Routing by ${cloud.strategy === "cost" ? "lowest cost" : "provider priority"}.`;
+  const simulated = cloud.providers.some((p) => p.simulated) ? " Clouds are simulated in this run." : "";
+  $("route-status").innerHTML = routeText + simulated;
+
+  $("lane-actions").innerHTML = lanes.map((p) => {
+    const label = p.outage_drill ? `Bring ${CLOUD[p.kind] || p.name} back` : `Take ${CLOUD[p.kind] || p.name} offline`;
+    return `<button class="btn ${p.outage_drill ? "" : "danger"} small" data-outage="${esc(p.name)}" data-down="${!p.outage_drill}" ${can("cloud:operate") ? "" : "disabled title='Switch to IT operations to run outage drills'"}>${esc(label)}</button>`;
+  }).join("");
+  $("strategy").value = cloud.strategy;
+}
+
+function renderFigures(s) {
+  const flagged = s.flags.filter((f) => !["ok", "not_screened"].includes(f.label)).reduce((a, f) => a + f.n, 0);
+  $("figures").innerHTML = [
+    [s.tests_24h.toLocaleString(), "results in 24 hours"],
+    [`${s.active_devices} of ${s.devices.length}`, "analysers online"],
+    [`${s.avg_integration_latency_s.toFixed(2)} s`, "device to clinician"],
+    [flagged, "samples flagged by AI screening"],
+    [s.open_alerts.length, "critical values open"],
+    [s.pending_reviews, "patient matches to review"],
+  ].map(([v, l]) => `<div><b>${esc(v)}</b><span>${esc(l)}</span></div>`).join("");
+
+  const shown = s.open_alerts.slice(0, 5);
+  const more = s.open_alerts.length - shown.length;
+  $("alerts").innerHTML = shown.length ? shown.map((a) => `
+    <div class="alert ${a.status === "escalated" ? "escalated" : ""}">
+      <p><strong>${esc(a.rule)}</strong></p>
+      <small>${esc(a.site)}, patient ${esc(a.patient_id)}, ${new Date(a.created_at).toLocaleTimeString()}${a.status === "escalated" ? ", escalated to on call" : ""}</small>
+      <div class="inline" style="margin:6px 0 0"><button class="btn small" data-ack="${esc(a.id)}" ${can("alerts:ack") ? "" : "disabled title='Clinicians acknowledge critical values'"}>Acknowledge</button></div>
+    </div>`).join("") + (more > 0 ? `<p class="empty">${more} more open. Acknowledge the oldest first.</p>` : "") : `<p class="empty">No open critical values.</p>`;
+
+  $("devices").innerHTML = s.devices.length ? s.devices.map((d) => {
+    const tone = d.status === "online" ? "ok" : d.status === "offline" ? "crit" : "warn";
+    return `<div class="device"><b>${esc(d.serial)}</b><span class="tag ${tone}">${esc(d.status)}</span><br>
+      <small>${esc(d.site)}, firmware ${esc(d.firmware)}, ${d.results} results, ${(d.flag_rate * 100).toFixed(0)}% flagged</small></div>`;
+  }).join("") : `<p class="empty">Analysers appear once they send results.</p>`;
+}
+
+function renderResults(rows) {
+  if (!rows.length) return;
+  $("results").innerHTML = rows.map((r) => {
+    const check = r.screening_label === "ok" ? "ok" : r.screening_label === "not_screened" ? "idle" : "warn";
+    const status = r.status === "released" ? (r.delivered_at ? ["ok", "Delivered"] : ["idle", "Released"]) : ["warn", "Held, recollect"];
+    const route = r.event_route === "edge_buffer" ? "warn" : "idle";
+    const high = ["H", "HH", "L", "LL"].includes(r.abnormal_flag);
+    return `<tr>
+      <td>${esc(r.patient_name)}</td><td>${esc(r.test_name)}</td>
+      <td class="num">${high ? "<strong>" : ""}${esc(r.value)} ${esc(r.units)}${high ? "</strong>" : ""}</td>
+      <td><span class="tag ${check}">${esc(LABELS[r.screening_label] || r.screening_label)}</span></td>
+      <td><span class="tag ${status[0]}">${status[1]}</span></td>
+      <td><span class="tag ${route}">${esc(CLOUD[r.event_route] || r.event_route)}</span></td></tr>`;
+  }).join("");
+}
+
+async function renderCosts() {
+  if (!can("finops:read")) { $("costs").innerHTML = `<p class="locked">Cost data is available to hospital administrators and IT operations.</p>`; return; }
+  const c = await api("/api/v1/finops/costs");
+  const pct = Math.min(c.budget_used_pct, 100);
+  $("costs").innerHTML = `
+    <ul class="rows">
+      <li><span>Cost per result</span><span><b>A$${c.cost_per_test_aud.toFixed(6)}</b></span></li>
+      ${c.by_provider.map((p) => `<li><span>${esc(CLOUD[p.provider] || p.provider)}</span><span>A$${p.cost_aud.toFixed(4)} over ${p.calls} calls</span></li>`).join("")}
+      <li><span>Projected month at ${(c.projected_monthly_tests / 1e6).toFixed(1)}M results</span><span>A$${c.projected_monthly_aud.toFixed(2)}</span></li>
+      <li><span>Cheapest for messaging</span><span>${esc(CLOUD[c.cheapest_messaging_provider] || "")}</span></li>
+    </ul>
+    <div class="bar" aria-hidden="true"><i style="width:${pct}%"></i></div>
+    <small>${c.budget_used_pct}% of the A$${c.monthly_budget_aud} monthly budget at projected volume</small>`;
+}
+
+async function renderCompliance() {
+  if (!can("compliance:read")) { $("compliance").innerHTML = `<p class="locked">Compliance posture is available to hospital administrators and IT operations.</p>`; return; }
+  const p = await api("/api/v1/compliance/posture");
+  $("compliance").innerHTML = `<p><b>${p.score}%</b> of checks passing</p><ul class="rows">${p.checks.map((c) => `
+    <li><span>${esc(c.control)}<br><small style="color:var(--muted)">${esc(c.framework)}</small></span>
+    <span><span class="tag ${c.status === "pass" ? "ok" : c.status === "warn" ? "warn" : "crit"}">${esc(c.status)}</span></span></li>`).join("")}</ul>`;
+}
+
+async function renderReviews() {
+  if (!can("reviews:decide")) { $("reviews").innerHTML = `<p class="locked">Switch to the hospital administrator to decide patient matches.</p>`; return; }
+  const rows = (await api("/api/v1/patients/reviews")).slice(0, 6);
+  if (!rows.length) { $("reviews").innerHTML = `<p class="empty">No matches waiting. Send more device results to create some.</p>`; return; }
+  $("reviews").innerHTML = `<div class="scroll"><table><thead><tr><th>Incoming record</th><th>Existing record</th><th class="num">Score</th><th></th></tr></thead><tbody>${rows.map((r) => `
+    <tr><td>${esc(r.incoming.family_name)}, ${esc(r.incoming.given_name)}<br><small>${esc(r.incoming.birth_date)}, ${esc(r.incoming.site)}</small></td>
+    <td>${esc(r.candidate.family_name)}, ${esc(r.candidate.given_name)}<br><small>${esc(r.candidate.birth_date)}, ${esc(r.candidate.site)}</small></td>
+    <td class="num"><span class="tag ${r.band === "probable" ? "ok" : "warn"}">${r.score.toFixed(1)}</span></td>
+    <td><button class="btn small" data-review="${esc(r.id)}" data-approve="true">Link</button>
+        <button class="btn quiet small" data-review="${esc(r.id)}" data-approve="false">Keep separate</button></td></tr>`).join("")}</tbody></table></div>`;
+}
+
+async function renderDlq() {
+  if (!can("cloud:operate")) { $("dlq").innerHTML = `<p class="locked">Switch to IT operations to run recovery drills.</p>`; return; }
+  const letters = await api("/api/v1/cloud/dead-letters");
+  const items = Object.entries(letters).flatMap(([p, list]) => list.map((m) => ({ p, ...m })));
+  $("dlq").innerHTML = items.length
+    ? `<ul class="rows">${items.slice(0, 5).map((m) => `<li><span>${esc(m.message_id)}</span><span>dead lettered in ${esc(CLOUD[m.p] || m.p)}</span></li>`).join("")}</ul>`
+    : `<p class="empty">Dead letter queues are empty.</p>`;
+}
+
+async function refreshFast() {
+  try {
+    const [summary, results] = await Promise.all([api("/api/v1/dashboard/summary"), api("/api/v1/results?limit=12")]);
+    drawMap(summary.cloud);
+    renderFigures(summary);
+    renderResults(results);
+  } catch (e) { $("route-status").textContent = `Cannot reach the API: ${e.message}`; }
+}
+async function refreshSlow() {
+  await Promise.allSettled([renderCosts(), renderCompliance(), renderReviews(), renderDlq()]);
+}
+function refreshAll() { refreshFast(); refreshSlow(); }
+
+document.addEventListener("click", async (ev) => {
+  const t = ev.target.closest("button");
+  if (!t || t.disabled) return;
+  try {
+    if (t.id === "traffic") {
+      t.disabled = true;
+      const r = await api("/api/v1/demo/traffic", { method: "POST", body: JSON.stringify({ count: 25 }) });
+      toast(`Sent ${r.generated} results. ${r.held} held for recollection, ${r.critical_alerts} critical.`);
+      t.disabled = false;
+    } else if (t.dataset.outage) {
+      await api(`/api/v1/cloud/providers/${t.dataset.outage}/outage`, { method: "POST", body: JSON.stringify({ down: t.dataset.down === "true" }) });
+      toast(t.dataset.down === "true" ? "Outage drill started. Traffic is failing over." : "Cloud restored. Held messages will replay.");
+    } else if (t.dataset.ack) {
+      await api(`/api/v1/alerts/${t.dataset.ack}/acknowledge`, { method: "POST" });
+      toast("Critical value acknowledged.");
+    } else if (t.dataset.review) {
+      const approve = t.dataset.approve === "true";
+      await api(`/api/v1/patients/reviews/${t.dataset.review}/decision`, { method: "POST", body: JSON.stringify({ approve }) });
+      toast(approve ? "Records linked under one patient." : "Records kept separate.");
+    } else if (t.id === "verify") {
+      const v = await api("/api/v1/ledger/verify");
+      const replicas = v.replica_checks.map((c) => `${CLOUD[c.provider] || c.provider} entry ${c.seq}: ${c.status}`).join("<br>");
+      $("ledger-out").innerHTML = v.chain_valid
+        ? `<b>Chain intact.</b> ${v.entries} entries verified.<br>${replicas}`
+        : `<b style="color:var(--crit)">Chain broken at entry ${v.broken[0].seq}.</b> ${esc(v.broken[0].problems.join(", "))}.<br>${replicas}`;
+    } else if (t.id === "tamper") {
+      const head = await api("/api/v1/ledger/verify");
+      if (!head.entries) { toast("Send device results first."); return; }
+      const seq = Math.max(1, head.entries - 1);
+      const r = await api(`/api/v1/ledger/${seq}/tamper-drill`, { method: "POST" });
+      state.seqToRepair = seq; $("repair").disabled = false;
+      $("ledger-out").innerHTML = `Entry ${seq} was edited in the database to ${esc(r.altered_value)}. Check the chain to see it caught.`;
+    } else if (t.id === "repair") {
+      const r = await api(`/api/v1/ledger/${state.seqToRepair}/repair`, { method: "POST" });
+      $("ledger-out").innerHTML = `Entry ${r.seq} restored from ${esc(CLOUD[r.restored_from] || r.restored_from)} locked storage. Check the chain again.`;
+      state.seqToRepair = null; $("repair").disabled = true;
+    } else if (t.id === "recall") {
+      const r = await api(`/api/v1/recall/${encodeURIComponent($("batch").value.trim())}`);
+      $("recall-out").innerHTML = `<div class="result-box"><b>${r.affected_patients} patients</b> and ${r.affected_results} results found in ${r.elapsed_ms} ms.
+        ${r.delivered_results} results already reached clinicians. Analysers: ${esc(r.instruments.join(", ") || "none")}.</div>`;
+    } else if (t.id === "poison") {
+      const r = await api("/api/v1/cloud/drills/poison-message", { method: "POST" });
+      toast(`Malformed event ${r.message_id} sent. It will be retried, then dead lettered.`);
+    } else if (t.id === "drain") {
+      const r = await api("/api/v1/cloud/drain", { method: "POST" });
+      toast(`Replayed ${r.replayed}. ${r.remaining} still held.`);
+    }
+  } catch (e) { toast(e.message); t.disabled = false; }
+  refreshAll();
+});
+
+$("who").addEventListener("change", (e) => signIn(e.target.value));
+$("strategy").addEventListener("change", async (e) => {
+  try { await api("/api/v1/cloud/strategy", { method: "POST", body: JSON.stringify({ strategy: e.target.value }) }); toast("Routing strategy updated."); }
+  catch (err) { toast(err.message); }
+  refreshFast();
+});
+
+signIn($("who").value);
+setInterval(refreshFast, 2500);
+setInterval(refreshSlow, 8000);
+</script>
+</body>
+</html>

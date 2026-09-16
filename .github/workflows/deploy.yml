@@ -1,0 +1,83 @@
+name: Deploy
+
+# Manual deployment using OpenID Connect federation. No long lived cloud keys are stored in GitHub.
+# Required repository variables:
+#   AWS_ROLE_ARN, AWS_REGION, ECR_REPOSITORY, ECS_CLUSTER, ECS_SERVICE
+#   AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID, AZURE_RESOURCE_GROUP, AZURE_CONTAINER_APP
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Where to deploy
+        type: choice
+        options: [aws, azure, both]
+        default: both
+      version:
+        description: Image tag, for example 1.0.1
+        required: true
+
+permissions:
+  contents: read
+  packages: write
+  id-token: write
+
+jobs:
+  aws:
+    if: inputs.target == 'aws' || inputs.target == 'both'
+    runs-on: ubuntu-latest
+    environment: aws
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push to Amazon ECR
+        run: |
+          IMAGE=${{ steps.ecr.outputs.registry }}/${{ vars.ECR_REPOSITORY }}:${{ inputs.version }}
+          docker build -t "$IMAGE" .
+          docker push "$IMAGE"
+
+      - name: Roll out on ECS Fargate
+        run: |
+          echo "Set image_tag=${{ inputs.version }} in Terraform and apply, or force a redeploy of the same tag:"
+          aws ecs update-service --cluster ${{ vars.ECS_CLUSTER }} --service ${{ vars.ECS_SERVICE }} --force-new-deployment
+          aws ecs wait services-stable --cluster ${{ vars.ECS_CLUSTER }} --services ${{ vars.ECS_SERVICE }}
+
+  azure:
+    if: inputs.target == 'azure' || inputs.target == 'both'
+    runs-on: ubuntu-latest
+    environment: azure
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push to GitHub Container Registry
+        run: |
+          IMAGE=ghcr.io/${{ github.repository_owner }}/kapconnect:${{ inputs.version }}
+          docker build -t "$IMAGE" .
+          docker push "$IMAGE"
+
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Roll out on Azure Container Apps
+        run: |
+          az containerapp update \
+            --name ${{ vars.AZURE_CONTAINER_APP }} \
+            --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
+            --image ghcr.io/${{ github.repository_owner }}/kapconnect:${{ inputs.version }}

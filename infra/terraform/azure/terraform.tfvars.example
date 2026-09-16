@@ -1,0 +1,7 @@
+subscription_id = "00000000-0000-0000-0000-000000000000"
+project         = "kapconnect"
+environment     = "dev"
+location        = "australiaeast"
+container_image = "ghcr.io/yeamin1414/kapconnect:1.0.0"
+alert_email     = "you@example.com"
+monthly_budget  = 500

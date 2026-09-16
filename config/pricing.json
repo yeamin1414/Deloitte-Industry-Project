@@ -1,0 +1,30 @@
+{
+  "_note": "Illustrative unit prices in USD for ap-southeast-2 (AWS) and australiaeast (Azure). Refresh from the AWS Price List API and the Azure Retail Prices API before using for real budgeting.",
+  "usd_to_aud": 1.52,
+  "providers": {
+    "aws": {
+      "object_put": 0.0000055,
+      "object_get": 0.00000044,
+      "message_publish": 0.0000004,
+      "message_receive": 0.0000004,
+      "key_request": 0.000003,
+      "storage_gb_month": 0.025
+    },
+    "azure": {
+      "object_put": 0.0000065,
+      "object_get": 0.00000052,
+      "message_publish": 0.0000008,
+      "message_receive": 0.0000008,
+      "key_request": 0.000003,
+      "storage_gb_month": 0.0208
+    },
+    "local": {
+      "object_put": 0.0,
+      "object_get": 0.0,
+      "message_publish": 0.0,
+      "message_receive": 0.0,
+      "key_request": 0.0,
+      "storage_gb_month": 0.0
+    }
+  }
+}

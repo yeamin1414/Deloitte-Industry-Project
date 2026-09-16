@@ -1,0 +1,62 @@
+# Quick start (no cloud account):      docker compose up --build
+# Real AWS and Azure SDKs on emulators: docker compose --profile emulators up --build
+# Add Prometheus:                       docker compose --profile observability up --build
+
+services:
+  kapconnect:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      KAP_CLOUD_PROVIDERS: aws_sim,azure_sim
+      KAP_JWT_SECRET: ${KAP_JWT_SECRET:-local-compose-secret-change-me-0123456789}
+    volumes:
+      - kapconnect-data:/app/data
+
+  localstack:
+    profiles: ["emulators"]
+    image: localstack/localstack:3.8
+    environment:
+      SERVICES: s3,sqs,kms
+      AWS_DEFAULT_REGION: ap-southeast-2
+      LOCALSTACK_AUTH_TOKEN: ${LOCALSTACK_AUTH_TOKEN:-}
+    ports:
+      - "4566:4566"
+
+  azurite:
+    profiles: ["emulators"]
+    image: mcr.microsoft.com/azure-storage/azurite:latest
+    command: azurite --blobHost 0.0.0.0 --queueHost 0.0.0.0 --skipApiVersionCheck --loose
+    ports:
+      - "10000:10000"
+      - "10001:10001"
+
+  kapconnect-emulated:
+    profiles: ["emulators"]
+    build: .
+    depends_on: [localstack, azurite]
+    restart: on-failure
+    ports:
+      - "8001:8000"
+    environment:
+      KAP_CLOUD_PROVIDERS: aws,azure
+      KAP_CLOUD_BOOTSTRAP: "true"
+      KAP_ENVIRONMENT: demo
+      KAP_AWS_ENDPOINT_URL: http://localstack:4566
+      KAP_AWS_REGION: ap-southeast-2
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+      KAP_AZURE_STORAGE_CONNECTION_STRING: >-
+        DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://azurite:10000/devstoreaccount1;QueueEndpoint=http://azurite:10001/devstoreaccount1;
+      KAP_JWT_SECRET: ${KAP_JWT_SECRET:-local-compose-secret-change-me-0123456789}
+
+  prometheus:
+    profiles: ["observability"]
+    image: prom/prometheus:v2.54.1
+    volumes:
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"
+
+volumes:
+  kapconnect-data:
